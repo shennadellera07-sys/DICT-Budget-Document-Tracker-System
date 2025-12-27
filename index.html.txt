@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DICT R8 | Cloud Budget Registry</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,100..900;1,100..900&display=swap');
+        body { font-family: 'Public Sans', sans-serif; background-color: #fcfdfe; color: #1e293b; letter-spacing: -0.015em; }
+        .glass-nav { background: white; border-bottom: 2px solid #0f172a; }
+        .doc-card { transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1); background: white; border: 1px solid #f1f5f9; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05); }
+        .doc-card:hover { transform: translateY(-4px); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.04); border-color: #cbd5e1; }
+        .sig-pad-area { background: #ffffff; border: 2px dashed #e2e8f0; border-radius: 20px; overflow: hidden; }
+        .btn-action { background: #0f172a; transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); cursor: pointer; }
+        .btn-action:hover { background: #334155; transform: translateY(-1px); }
+        .btn-action:disabled { background: #94a3b8; cursor: not-allowed; }
+        #signature-pad { touch-action: none; cursor: crosshair; background: white; width: 100%; height: 128px; }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-card { animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    </style>
+</head>
+<body class="min-h-screen pb-20">
+
+    <header class="glass-nav sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-8 py-4">
+            <div class="flex flex-col md:flex-row items-center justify-between gap-6">
+                <div class="flex items-center gap-5">
+                    <div class="w-14 h-14 bg-[#0f172a] rounded-xl flex items-center justify-center shadow-xl">
+                        <svg class="w-8 h-8 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
+                    </div>
+                    <div>
+                        <h1 class="text-lg font-black tracking-tighter text-[#0f172a] leading-none">DICT REGION VIII</h1>
+                        <p id="live-status" class="text-[10px] font-bold text-amber-600 uppercase tracking-[0.2em] mt-1">Initializing Cloud...</p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-4 w-full md:w-auto">
+                    <div class="relative flex-1 md:w-80">
+                        <input type="text" id="search-bar" placeholder="Search registry..." 
+                               class="w-full bg-slate-100 border border-slate-200 rounded-xl px-10 py-3 text-xs font-semibold focus:bg-white focus:ring-2 focus:ring-blue-100 outline-none transition-all">
+                        <svg class="w-4 h-4 absolute left-3.5 top-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </div>
+                    <button id="add-btn" class="btn-action text-white px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap shadow-lg shadow-slate-200">
+                        New Entry
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-8 py-10">
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+            <div class="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+                <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Total</p>
+                <h3 id="stat-total" class="text-3xl font-bold text-slate-900">0</h3>
+            </div>
+            <div class="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+                <p class="text-[9px] font-black text-blue-500 uppercase tracking-widest mb-1">Pending</p>
+                <h3 id="stat-pending" class="text-3xl font-bold text-slate-900">0</h3>
+            </div>
+            <div class="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+                <p class="text-[9px] font-black text-emerald-500 uppercase tracking-widest mb-1">Released</p>
+                <h3 id="stat-released" class="text-3xl font-bold text-slate-900">0</h3>
+            </div>
+            <div class="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+                <p class="text-[9px] font-black text-red-500 uppercase tracking-widest mb-1">Rush</p>
+                <h3 id="stat-urgent" class="text-3xl font-bold text-slate-900">0</h3>
+            </div>
+        </div>
+        <div id="ledger-container" class="space-y-4"></div>
+    </main>
+
+    <!-- Modal Form -->
+    <div id="master-modal" class="hidden fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm items-center justify-center p-4">
+        <div class="bg-white w-full max-w-4xl rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div class="px-8 py-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                <h2 id="modal-title" class="text-xs font-black text-slate-900 uppercase tracking-[0.2em]">Registry Entry</h2>
+                <button type="button" id="close-modal-btn" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-red-50 text-slate-400 hover:text-red-500 transition-all text-2xl font-light">&times;</button>
+            </div>
+
+            <form id="ledger-form" class="p-8 overflow-y-auto space-y-8">
+                <input type="hidden" id="edit-id">
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="md:col-span-2 space-y-2">
+                        <label class="text-[9px] font-black text-slate-500 uppercase ml-1">Document Subject</label>
+                        <input type="text" id="f-title" required class="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm font-semibold outline-none focus:bg-white focus:border-blue-400">
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-[9px] font-black text-slate-500 uppercase ml-1">Classification</label>
+                        <select id="f-category" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm font-semibold outline-none">
+                            <option value="DV-Procurement">DV-Procurement</option>
+                            <option value="DV-Non-Procurement">DV-Non-Procurement</option>
+                            <option value="Travel Order">Travel Order</option>
+                            <option value="Payroll">Payroll</option>
+                            <option value="Activity Design">Activity Design</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div class="space-y-4">
+                        <h4 class="text-[10px] font-black text-blue-600 uppercase tracking-widest border-l-4 border-blue-600 pl-3">Incoming</h4>
+                        <div class="grid grid-cols-2 gap-4">
+                            <input type="date" id="f-date-in" required class="w-full bg-slate-50 rounded-xl p-4 text-xs font-bold border border-slate-100">
+                            <select id="f-from" required class="w-full bg-slate-50 rounded-xl p-4 text-xs font-bold border border-slate-100">
+                                <option value="" disabled selected>Source Office...</option>
+                                <option value="FWF">FWF</option><option value="ILCDB">ILCDB</option><option value="ORD">ORD</option><option value="IIDB">IIDB</option><option value="PNPKI">PNPKI</option><option value="ACCTNG">ACCTNG</option><option value="DGP">DGP</option><option value="BAC">BAC</option>
+                            </select>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <input type="text" id="f-submitted-by" required placeholder="Name of Submitter" class="w-full bg-slate-50 border border-slate-100 rounded-xl p-4 text-xs font-bold">
+                            <input type="text" id="f-handler" required placeholder="Budget Processor" class="w-full bg-slate-50 border border-slate-100 rounded-xl p-4 text-xs font-bold">
+                        </div>
+                    </div>
+
+                    <div class="space-y-4">
+                        <h4 class="text-[10px] font-black text-emerald-600 uppercase tracking-widest border-l-4 border-emerald-600 pl-3">Outgoing</h4>
+                        <div class="grid grid-cols-2 gap-4">
+                            <input type="date" id="f-date-out" class="w-full bg-slate-50 rounded-xl p-4 text-xs font-bold border border-slate-100">
+                            <input type="text" id="f-to" placeholder="Target Office" class="w-full bg-slate-50 rounded-xl p-4 text-xs border border-slate-100">
+                        </div>
+                        <div class="flex items-center gap-3 p-4 bg-red-50 rounded-xl border border-red-100">
+                            <input type="checkbox" id="f-urgent" class="w-4 h-4 rounded">
+                            <label class="text-[9px] font-black text-red-600 uppercase">Rush Priority</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <textarea id="f-remarks" rows="4" placeholder="Remarks..." class="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-xs font-medium outline-none"></textarea>
+                    <div class="space-y-2">
+                        <div class="flex justify-between items-center"><label class="text-[9px] font-black text-slate-500 uppercase ml-1">Signature Pad</label><button type="button" id="clear-sig-btn" class="text-[8px] font-bold text-red-500 uppercase">Clear</button></div>
+                        <div class="sig-pad-area"><canvas id="signature-pad"></canvas></div>
+                    </div>
+                </div>
+
+                <div class="flex gap-4 pt-4">
+                    <button type="button" id="cancel-btn" class="flex-1 text-[10px] font-black text-slate-400 uppercase tracking-widest">Cancel</button>
+                    <button type="submit" id="submit-btn" class="flex-[2] btn-action text-white py-4 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] shadow-xl">Confirm Log</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
+        import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
+        import { getAuth, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
+
+        // 1. Firebase Configuration
+        const firebaseConfig = JSON.parse(__firebase_config);
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'dict-r8-ledger';
+
+        let cloudItems = [];
+        let canvas, ctx, drawing = false;
+        let currentUser = null;
+
+        // 2. Authentication Logic (CRITICAL)
+        async function authenticate() {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (err) {
+                console.error("Auth Failed:", err);
+                document.getElementById('live-status').innerText = "Auth Error";
+            }
+        }
+
+        onAuthStateChanged(auth, (user) => {
+            currentUser = user;
+            if (user) {
+                document.getElementById('live-status').innerText = "Cloud Sync Active";
+                document.getElementById('live-status').className = "text-[10px] font-bold text-emerald-600 uppercase tracking-[0.2em] mt-1";
+                startSync();
+            }
+        });
+
+        // 3. Real-time Synchronization
+        function startSync() {
+            if (!currentUser) return;
+            const q = collection(db, 'artifacts', appId, 'public', 'data', 'ledger');
+            onSnapshot(q, (snapshot) => {
+                cloudItems = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderLedger();
+            }, (error) => {
+                console.error("Snapshot Error:", error);
+            });
+        }
+
+        // 4. Rendering
+        function renderLedger() {
+            const queryText = document.getElementById('search-bar').value.toLowerCase();
+            const container = document.getElementById('ledger-container');
+            
+            const filtered = cloudItems.filter(l => 
+                l.title?.toLowerCase().includes(queryText) || 
+                l.from?.toLowerCase().includes(queryText) ||
+                l.submittedBy?.toLowerCase().includes(queryText)
+            ).sort((a,b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+            document.getElementById('stat-total').innerText = cloudItems.length;
+            document.getElementById('stat-pending').innerText = cloudItems.filter(l => !l.dateOut).length;
+            document.getElementById('stat-released').innerText = cloudItems.filter(l => l.dateOut).length;
+            document.getElementById('stat-urgent').innerText = cloudItems.filter(l => l.urgent).length;
+
+            if(filtered.length === 0) {
+                container.innerHTML = '<div class="py-20 text-center text-slate-300 font-black text-[10px] tracking-widest uppercase">No data found</div>';
+                return;
+            }
+
+            container.innerHTML = filtered.map(l => `
+                <div class="doc-card rounded-3xl p-6 flex flex-col lg:flex-row items-center gap-8 animate-card">
+                    <div class="lg:w-1/3 w-full">
+                        <div class="flex items-center gap-2 mb-3">
+                            <span class="text-[8px] font-black bg-blue-100 text-blue-700 px-2 py-0.5 rounded uppercase">${l.category}</span>
+                            ${l.urgent ? '<span class="text-[8px] font-black text-red-500 animate-pulse bg-red-50 px-2 py-0.5 rounded">● RUSH</span>' : ''}
+                        </div>
+                        <h3 class="text-base font-bold text-slate-900 leading-tight mb-3">${l.title}</h3>
+                        <div class="flex flex-wrap gap-2">
+                             <div class="px-2 py-1 bg-slate-100 text-[8px] font-bold text-slate-500 rounded-lg">FROM: ${l.from}</div>
+                             <div class="px-2 py-1 bg-blue-50 text-[8px] font-bold text-blue-600 rounded-lg">BY: ${l.submittedBy}</div>
+                        </div>
+                    </div>
+                    
+                    <div class="flex-1 w-full grid grid-cols-2 gap-6 text-xs border-x border-slate-50 px-8">
+                        <div>
+                            <p class="text-[8px] font-black text-slate-400 uppercase mb-1">Incoming</p>
+                            <p class="font-bold text-slate-700">${l.dateIn}</p>
+                            <p class="text-[9px] text-slate-500 italic mt-1">Recv: ${l.handler}</p>
+                        </div>
+                        <div>
+                            <p class="text-[8px] font-black text-slate-400 uppercase mb-1">Released</p>
+                            <p class="font-bold ${l.dateOut ? 'text-emerald-500' : 'text-slate-300'}">${l.dateOut || 'PENDING'}</p>
+                            <p class="text-[9px] text-slate-500 italic mt-1">To: ${l.to || '---'}</p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-6">
+                        ${l.signature ? `<img src="${l.signature}" class="h-10 opacity-60">` : ''}
+                        <div class="flex gap-2">
+                            <button onclick="window.editItem('${l.id}')" class="w-10 h-10 bg-slate-50 hover:bg-blue-600 hover:text-white rounded-xl flex items-center justify-center transition-all text-slate-400">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" stroke-width="2" stroke-linecap="round"/></svg>
+                            </button>
+                            <button onclick="window.deleteItem('${l.id}')" class="w-10 h-10 bg-slate-50 hover:bg-red-500 hover:text-white rounded-xl flex items-center justify-center transition-all text-slate-400">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" stroke-width="2" stroke-linecap="round"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 5. Form Submission
+        document.getElementById('ledger-form').onsubmit = async (e) => {
+            e.preventDefault();
+            
+            if (!currentUser) {
+                alert("Cloud connection not ready. Please wait a moment.");
+                return;
+            }
+
+            const submitBtn = document.getElementById('submit-btn');
+            const originalText = submitBtn.innerText;
+            submitBtn.innerText = "SAVING...";
+            submitBtn.disabled = true;
+
+            const editId = document.getElementById('edit-id').value;
+            const signatureData = canvas.toDataURL('image/png');
+
+            const payload = {
+                title: document.getElementById('f-title').value,
+                category: document.getElementById('f-category').value,
+                dateIn: document.getElementById('f-date-in').value,
+                from: document.getElementById('f-from').value,
+                submittedBy: document.getElementById('f-submitted-by').value,
+                handler: document.getElementById('f-handler').value,
+                dateOut: document.getElementById('f-date-out').value || "",
+                to: document.getElementById('f-to').value || "",
+                urgent: document.getElementById('f-urgent').checked,
+                remarks: document.getElementById('f-remarks').value || "",
+                signature: signatureData,
+                timestamp: Date.now()
+            };
+
+            try {
+                if (editId) {
+                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'ledger', editId), payload);
+                } else {
+                    await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'ledger'), payload);
+                }
+                closeModal();
+            } catch (err) {
+                console.error("Save Error:", err);
+                alert("Failed to save to cloud. Error: " + err.message);
+            } finally {
+                submitBtn.innerText = originalText;
+                submitBtn.disabled = false;
+            }
+        };
+
+        // Global functions
+        window.deleteItem = async (id) => {
+            if (confirm("Delete this entry from cloud?")) {
+                try {
+                    await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'ledger', id));
+                } catch (e) { alert("Delete failed."); }
+            }
+        };
+
+        window.editItem = (id) => {
+            const item = cloudItems.find(i => i.id === id);
+            if (!item) return;
+            openModal(id);
+        };
+
+        function openModal(editId = null) {
+            const form = document.getElementById('ledger-form');
+            form.reset();
+            document.getElementById('edit-id').value = editId || "";
+            document.getElementById('modal-title').innerText = editId ? "Edit Registry Record" : "New Registry Entry";
+            
+            if (editId) {
+                const item = cloudItems.find(i => i.id === editId);
+                document.getElementById('f-title').value = item.title;
+                document.getElementById('f-category').value = item.category;
+                document.getElementById('f-date-in').value = item.dateIn;
+                document.getElementById('f-from').value = item.from;
+                document.getElementById('f-submitted-by').value = item.submittedBy;
+                document.getElementById('f-handler').value = item.handler;
+                document.getElementById('f-date-out').value = item.dateOut || "";
+                document.getElementById('f-to').value = item.to || "";
+                document.getElementById('f-urgent').checked = item.urgent;
+                document.getElementById('f-remarks').value = item.remarks || "";
+            } else {
+                document.getElementById('f-date-in').valueAsDate = new Date();
+            }
+
+            document.getElementById('master-modal').classList.replace('hidden', 'flex');
+            setTimeout(initSignature, 200);
+        }
+
+        function closeModal() {
+            document.getElementById('master-modal').classList.replace('flex', 'hidden');
+        }
+
+        function initSignature() {
+            canvas = document.getElementById('signature-pad');
+            ctx = canvas.getContext('2d');
+            const ratio = window.devicePixelRatio || 1;
+            canvas.width = canvas.offsetWidth * ratio;
+            canvas.height = canvas.offsetHeight * ratio;
+            ctx.scale(ratio, ratio);
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = '#0f172a';
+            ctx.lineCap = 'round';
+
+            const getPos = (e) => {
+                const rect = canvas.getBoundingClientRect();
+                return {
+                    x: (e.touches ? e.touches[0].clientX : e.clientX) - rect.left,
+                    y: (e.touches ? e.touches[0].clientY : e.clientY) - rect.top
+                };
+            };
+            canvas.onmousedown = (e) => { drawing = true; ctx.beginPath(); const p = getPos(e); ctx.moveTo(p.x, p.y); };
+            canvas.onmousemove = (e) => { if(!drawing) return; const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); };
+            window.onmouseup = () => drawing = false;
+        }
+
+        // Bindings
+        document.getElementById('add-btn').onclick = () => openModal();
+        document.getElementById('close-modal-btn').onclick = closeModal;
+        document.getElementById('cancel-btn').onclick = closeModal;
+        document.getElementById('clear-sig-btn').onclick = () => ctx.clearRect(0,0,canvas.width,canvas.height);
+        document.getElementById('search-bar').oninput = renderLedger;
+
+        // Init
+        authenticate();
+    </script>
+</body>
+</html>
+
